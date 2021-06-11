@@ -1,0 +1,296 @@
+(* HelloWorld contract *)
+
+(***************************************************)
+(*                 Scilla version                  *)
+(***************************************************)
+
+scilla_version 0
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+import BoolUtils as BoolU PairUtils ListUtils as ListU IntUtils as IntU
+
+library Lottery
+
+
+let zero = Uint256 0
+let one = Uint256 1
+
+let zero128 = Uint128 0
+let one128 = Uint128 1
+
+let uint256_to_uint32 : Uint256 -> Uint32 =
+  fun (x : Uint256) =>
+    let ox256 = builtin to_uint32 x in
+      match ox256 with
+      | None =>
+        (* this never happens, hence we throw a division by zero exception just in case *)
+        let zero = Uint32 0 in
+        builtin div zero zero
+      | Some x256 => x256
+      end
+      
+let uint32_to_uint256 : Uint32 -> Uint256 =
+  fun (x : Uint32) =>
+    let ox256 = builtin to_uint256 x in
+      match ox256 with
+      | None =>
+        (* this never happens, hence we throw a division by zero exception just in case *)
+        let zero = Uint256 0 in
+        builtin div zero zero
+      | Some x256 => x256
+      end
+      
+let uint128_to_uint256 : Uint128 -> Uint256 =
+  fun (x : Uint128) =>
+    let ox256 = builtin to_uint256 x in
+      match ox256 with
+      | None =>
+        (* this never happens, hence we throw a division by zero exception just in case *)
+        let zero = Uint256 0 in
+        builtin div zero zero
+      | Some x256 => x256
+      end
+
+(*https://github.com/Zilliqa/staking-contract/blob/main/contracts/ssnlist.scilla#L143*)
+let create_list_for_range : Uint32 -> Uint32 -> List Uint32 =
+  fun (m : Uint32) =>
+  fun (n : Uint32) =>
+    let m_lt_n = builtin lt m n in
+    match m_lt_n with
+    | True =>
+        let delta = builtin sub n m in
+        let delta_nat = builtin to_nat delta in
+        let nil = Nil {Uint32} in
+        let acc_init = Pair {(List Uint32) Uint32} nil n in
+        let one = Uint32 1 in
+        let step = 
+          fun (xs_n : Pair (List Uint32) Uint32) =>
+          fun (ignore : Nat) =>
+          match xs_n with
+          | Pair xs n =>
+              let new_n = builtin sub n one in
+              let new_xs = Cons {Uint32} new_n xs in
+              Pair {(List Uint32) Uint32} new_xs new_n
+          end in
+        let fold = @nat_fold (Pair (List Uint32) Uint32) in
+        let xs_m = fold step acc_init delta_nat in
+        match xs_m with
+        | Pair xs m => xs
+        end
+    | False => Nil {Uint32}
+end
+
+let get_participant_count =
+  fun (last_ticket_id_purchased : Uint256) =>
+  fun (first_purchase_done : Bool) =>
+  fun (start_token_id : Uint256) =>
+    match first_purchase_done with
+    | False => zero
+    | True => 
+        let one = Uint256 1 in
+        let diff = builtin sub last_ticket_id_purchased start_token_id in 
+        builtin add diff one
+    end
+    
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg  
+    
+let default_true = True
+let default_false = False
+
+(* Error exception *)
+type Error =
+  | IsZero
+  | AmountNotMatching
+  | IsExceeded
+
+let make_error =
+  fun (result : Error) =>
+    let result_code = 
+      match result with
+      | IsZero             => Int32 -1
+      | AmountNotMatching  => Int32 -2
+      | IsExceeded         => Int32 -3
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+
+contract Lottery
+(
+  owner: ByStr20,
+  ticket_address: ByStr20,
+  max_ticket_count_per_purchase: Uint256
+)
+
+field start_token_id: Uint256 = Uint256 0
+
+field first_purchase_done: Bool = False
+
+field draw_number: Uint256 = Uint256 1
+
+field current_token_id: Uint256 = Uint256 0
+
+(* This is set to some random date in the future, you can set a custom starting date here *)
+field draw_timestamp: Uint64 = Uint64 1623408359
+
+field ticket_price: Uint128 = Uint128 10000000000000
+
+(* 800 seconds *)
+field duration_per_draw: Uint64 = Uint64 460
+
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+
+procedure processWinnings(rand: Uint256, first_purchase_done_local: Bool)    
+  winning_amount <- _balance;
+        
+  last_ticket_id_purchased <- current_token_id;
+  start_token_id_val <- start_token_id;
+  participant_count = get_participant_count last_ticket_id_purchased first_purchase_done_local start_token_id_val;
+
+  start_token_id_val <- start_token_id;
+  participant_count_plus_one = builtin add participant_count one;
+  rand_modulus = builtin rem participant_count_plus_one rand;
+  winning_token = builtin add start_token_id_val rand_modulus;
+
+  draw_completion_event = {_eventname : "Abcdeeeeeeee"; participant_count_plus_one: participant_count_plus_one;
+  rand_modulus: rand_modulus; winning_token: winning_token };
+  event draw_completion_event;
+
+  msg_to_sender = { _tag : "AllocateWinnings"; _recipient : ticket_address; _amount : winning_amount; token_id: winning_token  };
+  msgs = one_msg msg_to_sender;
+  send msgs
+end
+
+
+procedure resetDrawOnCompletion()
+  first_purchase_done := default_false;    
+
+  curr_draw_number <- draw_number;
+  new_draw_num = builtin add curr_draw_number one;
+  draw_number := new_draw_num;
+
+  duration <- duration_per_draw;
+  draw_timestamp_val <- draw_timestamp;
+
+  next_timestamp = builtin add duration draw_timestamp_val;
+  draw_timestamp := next_timestamp;
+
+  draw_completion_event = {_eventname : "DrawCompletion"; new_draw_number: new_draw_num; curr_pool: zero128; timestamp: next_timestamp };
+  event draw_completion_event
+end
+
+procedure purchaseTickets(iteration_list: List Uint32)
+  string_list_mapper = @ListU.list_map Uint32 String;
+  to_empty_string_fun = fun (int_val: Uint32) => "";
+  token_uri_empty_list = string_list_mapper to_empty_string_fun iteration_list;
+
+  msg_to_sender = { _tag : "BatchMint"; _recipient : ticket_address; _amount : Uint128 0; to: _sender; token_uris_list: token_uri_empty_list };
+  msgs = one_msg msg_to_sender;
+  send msgs
+end
+
+procedure setFirstTimeTicket(token_id: Uint256)
+  first_purchase_done_local <- first_purchase_done;
+  is_first_purchase_done = BoolU.andb first_purchase_done_local default_true;
+
+  match is_first_purchase_done with
+  | True =>
+  | False =>
+    first_purchase_done := default_true;
+    start_token_id_plus_one = builtin add token_id one;
+    start_token_id := start_token_id_plus_one
+  end
+
+end
+
+procedure validateAndAcceptPayment(ticket_count: Uint256)
+  is_zero = builtin eq ticket_count zero;
+
+  match is_zero with
+  | True =>
+    errZero = IsZero;
+    ThrowError errZero
+  | False =>
+    current_max_ticket_count = max_ticket_count_per_purchase;
+    is_exceeded = IntU.uint256_gt ticket_count current_max_ticket_count;
+
+    match is_exceeded with
+    | True =>
+      errExceeded = IsExceeded;
+      ThrowError errExceeded
+    | False =>
+      sent_amount = _amount;
+      amount256 = uint128_to_uint256 sent_amount;
+      
+      ticket_price_val <- ticket_price;
+      ticket_price256 = uint128_to_uint256 ticket_price_val;
+
+      total_price = builtin mul ticket_price256 ticket_count;
+      is_amount_matching = builtin eq amount256 total_price;
+
+      match is_amount_matching with
+      | False =>
+        errAmount = AmountNotMatching;
+        ThrowError errAmount
+      | True =>
+        accept
+      end
+    end
+  end
+end
+
+(* Callback for ticket contract *)
+transition BatchMintCallBack()
+end
+
+transition buyTickets(ticket_count: Uint256)
+  validateAndAcceptPayment ticket_count;
+
+  current_token_id_local <- current_token_id;  
+  setFirstTimeTicket current_token_id_local;
+
+  total_tokens = builtin add current_token_id_local ticket_count;
+
+  total_tokens32 = uint256_to_uint32 total_tokens;
+  current_token_id_local32 = uint256_to_uint32 current_token_id_local;
+  iteration_list = create_list_for_range current_token_id_local32 total_tokens32;
+
+  purchaseTickets iteration_list;
+
+  current_token_id := total_tokens;
+
+  curr_bal <- _balance;
+  purchase_completion_event = {_eventname : "PurchaseCompleted"; current_pool: curr_bal };
+  event purchase_completion_event
+end
+
+transition processDraw(random_number: Uint256)
+  first_purchase_done_local <- first_purchase_done;
+  should_run_draw = BoolU.andb first_purchase_done_local default_true;
+
+  match should_run_draw with
+  | False =>
+    resetDrawOnCompletion
+  | True =>
+    processWinnings random_number first_purchase_done_local;
+
+    resetDrawOnCompletion
+  end
+end
+
+
+
+
+  

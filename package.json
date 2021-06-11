@@ -1,0 +1,17 @@
+{
+    "name": "lottery-zil-app",
+    "version": "1.0.0",
+    "description": "Lottery Root",
+    "scripts": {
+      "install-service": "cd backend-listener-service && npm install",
+      "install-client": "cd user-interface && npm install",
+      "install-current": "npm install",
+      "install-all": "npm run install-current && npm run install-service && npm run install-client",
+      "service": "cd backend-listener-service && npm run start",
+      "client": "cd user-interface && npm run start",
+      "start-services": "concurrently \"npm run client\" \"npm run service\""
+    },
+    "dependencies": {
+      "concurrently": "^6.1.0"
+    }
+}

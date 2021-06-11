@@ -1,0 +1,24 @@
+$header-color: #536281;
+$header-color-light-20: lighten($header-color, 20%);
+
+$price-summary-background: #209efb;
+$price-summary-color: #ffffff;
+
+$primary-color: #40e0e0;
+$primary-color-light-20: lighten($primary-color, 20%);
+$red-color: #0c090a;
+
+$primary-dark: #16325c;
+$primary-dark-light-10: #163b72;
+$widget-border-radius: 5px;
+$widget-box-shadow: 0px 7px 56px 6px rgba(63, 59, 74, 0.15);
+$widget-padding: 30px;
+$widget-sub-padding: 20px;
+$button-color: #ffc149;
+
+$top-header-width: 60%;
+$top-header-width-medium: 80%;
+$top-header-width-extra-large: 50%;
+
+$error-color: rgb(255, 93, 93);
+$success-color: #69e8bd;
