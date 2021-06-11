@@ -1,5 +1,5 @@
 # Lottery Application
-![screenshot]()
+![screenshot](https://user-images.githubusercontent.com/83293842/121692079-53f7c380-cae5-11eb-88c4-13988bb531f1.png)
 
 # Overview
 
