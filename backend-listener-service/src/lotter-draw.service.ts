@@ -205,7 +205,6 @@ export class LotteryDrawService implements OnModuleInit {
     const skipAmount = processedPage * limit;
     return await this.lotteryDrawModel.find()
       .sort({ "drawNumber": -1 })
-      .limit(1)
       .skip(skipAmount)
       .exec();
   }
