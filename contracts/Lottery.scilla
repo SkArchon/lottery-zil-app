@@ -140,7 +140,7 @@ field current_token_id: Uint256 = Uint256 0
 
 (* This is set to some random date in the future, you can set a custom starting date here *)
 (* <<REPLACE_ME>> add about 10 mins to the current epoch date - https://www.epochconverter.com/ *)
-field draw_timestamp: Uint64 = Uint64 1623412598
+field draw_timestamp: Uint64 = Uint64 1624902505
 
 field ticket_price: Uint128 = Uint128 10000000000000
 
@@ -164,10 +164,6 @@ procedure processWinnings(rand: Uint256, first_purchase_done_local: Bool)
   participant_count_plus_one = builtin add participant_count one;
   rand_modulus = builtin rem participant_count_plus_one rand;
   winning_token = builtin add start_token_id_val rand_modulus;
-
-  draw_completion_event = {_eventname : "Abcdeeeeeeee"; participant_count_plus_one: participant_count_plus_one;
-  rand_modulus: rand_modulus; winning_token: winning_token };
-  event draw_completion_event;
 
   msg_to_sender = { _tag : "AllocateWinnings"; _recipient : ticket_address; _amount : winning_amount; token_id: winning_token  };
   msgs = one_msg msg_to_sender;

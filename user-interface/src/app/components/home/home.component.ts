@@ -277,7 +277,7 @@ export class HomeComponent implements OnDestroy {
   numberValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const numberValue = Number(control.value);
-      return (isNaN(numberValue) || numberValue < 0) ? {notNumber: true} : null;
+      return (isNaN(numberValue) || numberValue <= 0) ? {notNumber: true} : null;
     };
   }
 

@@ -15,6 +15,11 @@ The application uses a monorepo architecture where
 * user-interface
   A frontend application written in Angular that contains the frontend for our app. We use zilpay as our wallet.
 
+# Demonstration
+
+Click the following (https://youtu.be/f--Qs1FbwTs) to view the demonstration of using the application. (Please note that certain parts of idle time where mainly the spinners were active were removed to avoid the Youtubes 15 minute limit and make the video easier to watch).
+
+[![Demonstration](https://img.youtube.com/vi/f--Qs1FbwTs/0.jpg)](https://youtu.be/f--Qs1FbwTs)
 # Functionality 
 
 ### Getting Into the Application
